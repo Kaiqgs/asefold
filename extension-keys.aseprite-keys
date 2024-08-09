@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<keyboard version="1">
+    <commands>
+        <key command="AsefoldExportDialog" shortcut="Ctrl+Shift+E" />
+        <key command="AsefoldRepeatExport" shortcut="Shift+Space+E" />
+    </commands>
+</keyboard>
