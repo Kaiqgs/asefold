@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+import argparse
 import json
 import re
 import subprocess
@@ -42,9 +44,14 @@ def get_version():
         return json.loads(f.read())["version"]
 
 def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--keep", "-k", action="store_true")
+    args = argparser.parse_args()
     preprocess_extension()
     version = get_version()
-    subprocess.Popen(f"zip {ZIP_FILE.format(version)} {EXTENSION_FILE} extension-keys.aseprite-keys package.json LICENSE && rm {EXTENSION_FILE} && echo 'finished exporting {ZIP_FILE.format(version)}'", shell=True)
+    rm_extension = f"&& rm {EXTENSION_FILE}"
+    rm_extension = "" if args.keep else rm_extension
+    subprocess.Popen(f"zip {ZIP_FILE.format(version)} {EXTENSION_FILE} extension-keys.aseprite-keys package.json LICENSE {rm_extension} && echo 'finished exporting {ZIP_FILE.format(version)}'", shell=True)
 
 
 

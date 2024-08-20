@@ -2,14 +2,36 @@
 local inspect = require("inspect")
 --- _ignore_end_
 local pardir = ".."
-local _module_enum = '\t\t%s = "%s"'
-local _module_template = [[
--- generated @ aseprite: defold-export
+local _module_animation_line = '\t\t%s = "%s"'
+local _module_shallow_animation_line = '\t%s = "%s"'
+local _module_item_line = '\t\t["%s"] = "%s"'
+local _shallow_module_template = [[
+-- generated @ aseprite: asefold-export
 local M = {
-    enum = {
+    -- ase-animations: begin
+%s,
+    -- ase-animations: end
+    layers = {
+%s
+    },
+    tags = {
 %s
     }
-    -- (...) insert commonly managed data here
+}
+return M
+]]
+local _deep_module_template = [[
+-- generated @ aseprite: asefold-export
+local M = {
+    animations = {
+%s
+    },
+    layers = {
+%s
+    },
+    tags = {
+%s
+    }
 }
 return M
 ]]
@@ -49,13 +71,24 @@ function math.choice(list)
     return list[index]
 end
 
+function table.values(self)
+    local list = {}
+    for _, v in ipairs(self) do
+        table.insert(list, v)
+    end
+    return list
+end
+
 ---@type Dialog
 local _main_dialog_
+
+local LuaModuleType = { none = "none", shallow = "shallow", deep = "deep" }
 local DialogWidgets = {
     Animation = "animation",
     SpriteSheetType = "sprite_sheet_type",
     GenerateModule = "generate_module",
     OutputFolder = "output_folder",
+    FlattenVisible = "flatten_visible",
 }
 local AnimationType = {
     FromTags = "tags",
@@ -109,6 +142,7 @@ local MapAniDir = {
 }
 
 local loc = {
+    flatten = "flatten visible",
     titles = {
 
         "export",
@@ -195,7 +229,7 @@ local function success_dialog(parent, messages)
 end
 local function error_dialog(parent, reason)
     local _inner = Dialog({ title = loc.sorry, parent = parent })
-    
+
     if reason and type(reason) == "string" then
         _inner = _inner:label({ text = reason })
     elseif reason and type(reason) == "table" then
@@ -352,6 +386,7 @@ local function get_animations_from_tags(export_data)
             -- print("here I am", id)
             -- print(inspect(data))
             if data and not consumed_ids[id] then
+--- _ignore_start_
                 print(
                     ("Layer '%s', tag '%s', tag_direction '%s' and data '%s'"):format(
                         layer.name,
@@ -360,6 +395,7 @@ local function get_animations_from_tags(export_data)
                         tag_data
                     )
                 )
+--- _ignore_end_
                 local playback_match = {
                     once = MapAniDir[ani_defold(tag.direction or AniDir.FORWARD, false)],
                     none = MapAniDir.none,
@@ -381,23 +417,48 @@ local function get_animations_from_tags(export_data)
 
     return animations, animation_ids
 end
-local function save_module(filepath, animation_ids)
-    if not _main_dialog_.data[DialogWidgets.GenerateModule] then
+local function save_module(filepath, animation_ids, export_data)
+    if
+        not _main_dialog_.data[DialogWidgets.GenerateModule]
+        or _main_dialog_.data[DialogWidgets.GenerateModule] == LuaModuleType.none
+    then
         return
     end
-    local enums = {}
+
+    local is_shallow = _main_dialog_.data[DialogWidgets.GenerateModule] == LuaModuleType.shallow
+
+    --- get animations
+    local animations = {}
     for _, id in ipairs(animation_ids) do
-        table.insert(enums, _module_enum:format(id, id))
+        local line
+        if is_shallow then
+            line = table.insert(animations, _module_shallow_animation_line:format(id, id))
+        else
+            line = table.insert(animations, _module_animation_line:format(id, id))
+        end
+        table.insert(animations, line)
     end
 
-    local enum_string = table.concat(enums, ",\n")
+    local layers = {}
+    for _, layer in ipairs(export_data.meta.layers) do
+        table.insert(layers, _module_item_line:format(layer.name, layer.name))
+    end
+
+    local tags = {}
+    for _, tag in ipairs(export_data.meta.frameTags) do
+        table.insert(tags, _module_item_line:format(tag.name, tag.name))
+    end
+
+    local animations_string = table.concat(animations, ",\n")
+    local layers_string = table.concat(layers, ",\n")
+    local tags_string = table.concat(tags, ",\n")
 
     -- _tilesource_template
     local module_file = io.open(filepath, "w+")
     if not module_file then
         error("not able to save module")
     end
-    module_file:write(_module_template:format(enum_string))
+    module_file:write(_shallow_module_template:format(animations_string, layers_string, tags_string))
     module_file:close()
 end
 local function save_tilesource(export_data, image_filepath, filepath, module_filename)
@@ -407,7 +468,7 @@ local function save_tilesource(export_data, image_filepath, filepath, module_fil
         error("not able to save tilesource")
     end
 
-    local animations, animation_ids = "", {}
+    local animations, animation_ids = {}, {}
 
     if is_export_lua_module() then
         animations, animation_ids = get_animations_from_tags(export_data)
@@ -427,10 +488,19 @@ local function save_tilesource(export_data, image_filepath, filepath, module_fil
     -- print(image_filepath)
     -- print(filepath)
 
-    save_module(module_filename, animation_ids)
+    save_module(module_filename, animation_ids, export_data)
 end
 -- local function export_tileset() end
 local function _export_tilesource()
+    --- preprocessing
+    if _main_dialog_.data[DialogWidgets.FlattenVisible] then
+        app.transaction(function()
+            local layer_name = app.activeLayer.name
+            app.activeSprite:flatten()
+            app.activeLayer.name = layer_name
+        end)
+    end
+
     local sprite_name = app.fs.fileTitle(app.activeSprite.filename) or loc.defold_sprite
     local sprite_filename = loc.filename:format(sprite_name, loc.extension_png)
     local curr_folder = app.fs.filePath(app.activeSprite.filename) or "/"
@@ -467,6 +537,10 @@ local function _export_tilesource()
         filenameFormat = loc.data_filename_form,
     })
 
+    if _main_dialog_.data[DialogWidgets.FlattenVisible] then
+        app.undo()
+    end
+
     local export_data = get_obj_from_temp(temp_json_path)
     save_tilesource(export_data, internal_image_filename, tilesource_filename, module_filepath)
     local success_information = {}
@@ -484,6 +558,7 @@ end
 local function dialog_export_tilesource(dialog)
     -- sheet_type_label = "sheet type",
     return dialog
+        :check({ text = loc.flatten, id = DialogWidgets.FlattenVisible })
         :combobox({
             options = { SpriteSheetLabels[1], SpriteSheetLabels[4], SpriteSheetLabels[5] },
             id = DialogWidgets.SpriteSheetType,
@@ -518,8 +593,9 @@ local function dialog_export_tilesource(dialog)
                 })
             end,
         })
-        :check({
-            selected = false,
+        :combobox({
+            options = { LuaModuleType.none, LuaModuleType.shallow, LuaModuleType.deep },
+            selected = LuaModuleType.none,
             label = loc.generate_module_label,
             id = DialogWidgets.GenerateModule,
             text = loc.generate_module,
@@ -534,16 +610,16 @@ local function basic_dialog(dialog, overrides)
         --     save = true,
         --     label = loc.filepath_label,
         -- })
+        :button({
+            text = loc.run_export,
+            label = loc.run_label,
+            onclick = overrides.run_export or function(...) end,
+        })
         :entry({
             text = "/assets",
             save = true,
             label = loc.output_folder_label,
             id = DialogWidgets.OutputFolder,
-        })
-        :button({
-            text = loc.run_export,
-            label = loc.run_label,
-            onclick = overrides.run_export or function(...) end,
         })
 end
 local function show_dialog()
@@ -553,10 +629,10 @@ local function show_dialog()
         vexpand = true,
     })
 
-    dlg = dialog_export_tilesource(dlg)
     dlg = basic_dialog(dlg, {
         run_export = _export_tilesource,
     })
+    dlg = dialog_export_tilesource(dlg)
     _main_dialog_ = dlg
     dlg:show()
 end
