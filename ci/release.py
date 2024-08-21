@@ -12,7 +12,7 @@ ZIP_FILE = "asefold.v{}.aseprite-extension"
 PACKAGE_FILE = "package.json"
 REMOVE_PATTERNS = [
     [
-        r"^.*_ignore_start_(.|\s|)*?_ignore_end_\s", ""
+        r".*_ignore_start_(.|\s|)*?_ignore_end_\s", ""
     ],
     [
         r".*inspect\..*", ""
