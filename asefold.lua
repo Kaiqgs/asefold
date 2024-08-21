@@ -605,11 +605,6 @@ end
 ---@param dialog Dialog
 local function basic_dialog(dialog, overrides)
     return dialog
-        -- :file({
-        --     filetypes = { "tilesource" },
-        --     save = true,
-        --     label = loc.filepath_label,
-        -- })
         :button({
             text = loc.run_export,
             label = loc.run_label,
