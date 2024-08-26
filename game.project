@@ -1,0 +1,25 @@
+[project]
+title = Asefold
+developer = github.com/Kaiqgs
+custom_resources = main/,assets/
+dependencies#0 = https://github.com/britzl/defold-orthographic/archive/refs/tags/3.3.2.zip
+
+[bootstrap]
+main_collection = /main/main.collectionc
+render = /orthographic/render/orthographic.renderc
+
+[input]
+game_binding = /main/main.input_bindingc
+
+[script]
+shared_state = 1
+
+[render]
+clear_color_red = 0.55
+clear_color_green = 0.55
+clear_color_blue = 0.55
+
+[graphics]
+default_texture_min_filter = nearest
+default_texture_mag_filter = nearest
+

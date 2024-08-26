@@ -59,26 +59,6 @@ extrude_borders: 2
 inner_padding: 0
 sprite_trim_mode: SPRITE_TRIM_MODE_OFF]]
 
-function math.round(x)
-    return math.floor(x + 0.5)
-end
-
-function math.choice(list)
-    if #list == 0 then
-        return nil
-    end
-    local index = math.random(1, #list)
-    return list[index]
-end
-
-function table.values(self)
-    local list = {}
-    for _, v in ipairs(self) do
-        table.insert(list, v)
-    end
-    return list
-end
-
 ---@type Dialog
 local _main_dialog_
 
@@ -114,14 +94,10 @@ local commands = {
 }
 local empty_name = "__empty__"
 
-local function is_export_lua_module()
-    return _main_dialog_.data[DialogWidgets.Animation] == AnimationType.FromTags
-end
+local PINGPONG_REVERSE = "pingpong_reverse"
 local function ani_defold(ani, loop)
     return tostring(ani) .. ":" .. tostring(loop)
 end
-
-local PINGPONG_REVERSE = "pingpong_reverse"
 -- animation + loop
 local MapAniDir = {
     [ani_defold(AniDir.FORWARD, true)] = "PLAYBACK_LOOP_FORWARD",
@@ -189,7 +165,39 @@ local loc = {
     data_filename_parse = "([%w%s_. ]*)|([%w%s_. ]+)",
     filename_parse_separator = "|",
 }
+function math.round(x)
+    return math.floor(x + 0.5)
+end
 
+function math.choice(list)
+    if #list == 0 then
+        return nil
+    end
+    local index = math.random(1, #list)
+    return list[index]
+end
+
+function table.values(self)
+    local list = {}
+    for _, v in ipairs(self) do
+        table.insert(list, v)
+    end
+    return list
+end
+
+local function ternary(cond, a, b)
+    if cond then
+        return a
+    end
+    return b
+end
+local function is_export_lua_module()
+    return _main_dialog_.data[DialogWidgets.GenerateModule]
+        and _main_dialog_.data[DialogWidgets.GenerateModule] ~= LuaModuleType.none
+end
+local function is_from_tags()
+    return _main_dialog_.data[DialogWidgets.Animation] == AnimationType.FromTags
+end
 local function get_obj_from_temp(temp_json_path)
     local temp_file = io.open(temp_json_path, "r")
     if not temp_file then
@@ -386,7 +394,7 @@ local function get_animations_from_tags(export_data)
             -- print("here I am", id)
             -- print(inspect(data))
             if data and not consumed_ids[id] then
---- _ignore_start_
+                --- _ignore_start_
                 print(
                     ("Layer '%s', tag '%s', tag_direction '%s' and data '%s'"):format(
                         layer.name,
@@ -395,7 +403,7 @@ local function get_animations_from_tags(export_data)
                         tag_data
                     )
                 )
---- _ignore_end_
+                --- _ignore_end_
                 local playback_match = {
                     once = MapAniDir[ani_defold(tag.direction or AniDir.FORWARD, false)],
                     none = MapAniDir.none,
@@ -418,10 +426,7 @@ local function get_animations_from_tags(export_data)
     return animations, animation_ids
 end
 local function save_module(filepath, animation_ids, export_data)
-    if
-        not _main_dialog_.data[DialogWidgets.GenerateModule]
-        or _main_dialog_.data[DialogWidgets.GenerateModule] == LuaModuleType.none
-    then
+    if not is_export_lua_module() then
         return
     end
 
@@ -458,7 +463,8 @@ local function save_module(filepath, animation_ids, export_data)
     if not module_file then
         error("not able to save module")
     end
-    module_file:write(_shallow_module_template:format(animations_string, layers_string, tags_string))
+    local template = ternary(is_shallow, _shallow_module_template, _deep_module_template)
+    module_file:write(template:format(animations_string, layers_string, tags_string))
     module_file:close()
 end
 local function save_tilesource(export_data, image_filepath, filepath, module_filename)
@@ -470,10 +476,8 @@ local function save_tilesource(export_data, image_filepath, filepath, module_fil
 
     local animations, animation_ids = {}, {}
 
-    if is_export_lua_module() then
+    if is_from_tags() then
         animations, animation_ids = get_animations_from_tags(export_data)
-        -- print("animations")
-        -- print(inspect(animations))
     end
     local out_data = _tilesource_template:format(
         image_filepath,
@@ -492,12 +496,20 @@ local function save_tilesource(export_data, image_filepath, filepath, module_fil
 end
 -- local function export_tileset() end
 local function _export_tilesource()
-    --- preprocessing
+    local ran_transaction = false
     if _main_dialog_.data[DialogWidgets.FlattenVisible] then
         app.transaction(function()
             local layer_name = app.activeLayer.name
+            for _,layer in ipairs(app.activeSprite.layers) do
+                if not layer.isVisible then
+                    app.activeSprite:deleteLayer(layer)
+                    ran_transaction = true
+                end
+            end
             app.activeSprite:flatten()
+            ran_transaction = true
             app.activeLayer.name = layer_name
+            ran_transaction = true
         end)
     end
 
@@ -537,7 +549,7 @@ local function _export_tilesource()
         filenameFormat = loc.data_filename_form,
     })
 
-    if _main_dialog_.data[DialogWidgets.FlattenVisible] then
+    if ran_transaction then
         app.undo()
     end
 
@@ -548,7 +560,7 @@ local function _export_tilesource()
     table.insert(success_information, loc.save_printout:format("Texture", export_texture_path))
     table.insert(success_information, loc.save_printout:format("Tile Source", tilesource_filename))
     if is_export_lua_module() then
-        -- table.insert(success_information, loc.save_printout:format("Lua module", module_filepath))
+        table.insert(success_information, loc.save_printout:format("Lua module", module_filepath))
     end
     success_dialog(_main_dialog_, success_information);
     (_main_dialog_ or { close = function(...) end }):close()
@@ -617,6 +629,7 @@ local function basic_dialog(dialog, overrides)
             id = DialogWidgets.OutputFolder,
         })
 end
+
 local function show_dialog()
     local dlg = Dialog({
         title = ("Asefold: %s"):format(math.choice(loc.titles) or "asefold"),

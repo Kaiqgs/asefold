@@ -1,0 +1,69 @@
+local dog_tilesource = require("assets.dog_tilesource")
+local dummy_tilesource = require("assets.dummy_tilesource")
+
+local sprite_factory = "#sprite_factory"
+
+go.property("image", resource.tile_source(""))
+go.property("displacement", vmath.vector3(16, 9, .01))
+go.property("scale", 1)
+
+---@class SpriteData
+---@field gameobject hash
+---@field sprite url
+SpriteData = {}
+
+local camera = "/camera#camera"
+local function create_sprites(self)
+    self.animations = {}
+    for k, _ in pairs(dog_tilesource.animations) do
+        table.insert(self.animations, k)
+    end
+    table.sort(self.animations)
+
+    self.sprites = self.sprites or {}
+    for _, sprite in ipairs(self.sprites) do
+        go.delete(sprite.gameobject)
+    end
+
+    local total_displacement = self.displacement * self.scale * #self.animations
+    local position = vmath.vector3() - total_displacement / 2
+    for _, animation in ipairs(self.animations) do
+        local data = {}
+        data.gameobject = factory.create(sprite_factory, position, nil, { image = self.image })
+        data.sprite = msg.url(nil, data.gameobject, "sprite")
+        sprite.play_flipbook(data.sprite, animation)
+        position = position + self.displacement * self.scale
+        table.insert(self.sprites, data)
+    end
+end
+
+local function position_sprites(self)
+    local total_displacement = self.displacement * self.scale * #self.sprites
+    local position = vmath.vector3() - total_displacement / 2
+    for _, sprite in ipairs(self.sprites) do
+        go.set_position(position, sprite.gameobject)
+        position = position + self.displacement * self.scale
+    end
+    print("scale", self.scale)
+end
+function init(self)
+    msg.post(".", "acquire_input_focus")
+    self.animations = {
+        "skin_hurt",
+        "skin_idle",
+    }
+    create_sprites(self)
+end
+
+function on_reload(self)
+    create_sprites(self)
+end
+
+function on_input(self, action_id, action)
+    if action_id == nil then
+        print(action.x)
+        local ratio = action.x / 960
+        self.scale = ratio
+        position_sprites(self)
+    end
+end

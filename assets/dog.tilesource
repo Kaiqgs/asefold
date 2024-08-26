@@ -1,0 +1,56 @@
+image: "/assets/dog.png"
+tile_width: 22
+tile_height: 22
+collision_groups: "default"
+animations {
+  id: "udyr_act_bad"
+  start_tile: 28
+  end_tile: 29
+  fps: 3
+}
+animations {
+  id: "udyr_act_confused"
+  start_tile: 9
+  end_tile: 12
+  fps: 5
+}
+animations {
+  id: "udyr_act_good"
+  start_tile: 30
+  end_tile: 33
+  fps: 4
+}
+animations {
+  id: "udyr_chill"
+  start_tile: 1
+  end_tile: 8
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 2
+}
+animations {
+  id: "udyr_precipitate"
+  start_tile: 24
+  end_tile: 27
+  fps: 2
+}
+animations {
+  id: "udyr_punished"
+  start_tile: 13
+  end_tile: 16
+  fps: 4
+}
+animations {
+  id: "udyr_rewarded"
+  start_tile: 17
+  end_tile: 21
+  playback: PLAYBACK_LOOP_PINGPONG
+  fps: 20
+}
+animations {
+  id: "udyr_worry"
+  start_tile: 22
+  end_tile: 23
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 2
+}
+extrude_borders: 2

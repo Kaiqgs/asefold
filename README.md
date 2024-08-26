@@ -15,6 +15,7 @@ Aseprite Defold integration
 - [ ] sheet type: columns
 - [ ] read collision from layer
 - [ ] functionality of merge down before export
+
 - [ ] use case gif: save stacked former
 - [ ] use case gif: save horizontal, row, and vertical
 - [ ] use case gif: playback on userdata: once forward
