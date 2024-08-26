@@ -1,6 +1,10 @@
 # asefold
 Aseprite Defold integration
 
+## export ##
+
+![](https://github.com/asefold/export_no_scripts.gif)
+
 # Roadmap and known issues
 - [X] bugfix: not exporting ping-pong
 - [X] bugfix: not exporting reverse
