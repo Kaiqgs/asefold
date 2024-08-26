@@ -1,0 +1,19 @@
+image: "/assets/dummy.png"
+tile_width: 16
+tile_height: 18
+collision_groups: "default"
+animations {
+  id: "skin_hurt"
+  start_tile: 5
+  end_tile: 8
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 4
+}
+animations {
+  id: "skin_idle"
+  start_tile: 1
+  end_tile: 4
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 2
+}
+extrude_borders: 2

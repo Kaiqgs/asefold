@@ -1,0 +1,31 @@
+name: "main"
+instances {
+  id: "main"
+  prototype: "/main/main.go"
+  component_properties {
+    id: "main"
+    properties {
+      id: "image"
+      value: "/assets/dog.tilesource"
+      type: PROPERTY_TYPE_HASH
+    }
+  }
+}
+instances {
+  id: "camera"
+  prototype: "/orthographic/camera.go"
+  component_properties {
+    id: "script"
+    properties {
+      id: "zoom"
+      value: "5.0"
+      type: PROPERTY_TYPE_NUMBER
+    }
+    properties {
+      id: "projection"
+      value: "FIXED_AUTO"
+      type: PROPERTY_TYPE_HASH
+    }
+  }
+}
+scale_along_z: 0

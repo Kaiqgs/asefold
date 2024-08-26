@@ -1,0 +1,11 @@
+{
+  "workspace.library": [
+    "defold_api/",
+    "../aseprite-type-definition/definitions/"
+  ],
+  "diagnostics.disable": [
+    "missing-parameter",
+    "lowercase-global"
+  ],
+  "runtime.version": "Lua 5.1"
+}
