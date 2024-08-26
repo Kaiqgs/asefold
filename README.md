@@ -3,7 +3,7 @@ Aseprite Defold integration
 
 ## export ##
 
-![](https://github.com/asefold/export_no_scripts.gif)
+![](https://github.com/Kaiqgs/asefold/blob/main/assets/export_no_scripts.gif?raw=true)
 
 # Roadmap and known issues
 - [X] bugfix: not exporting ping-pong
