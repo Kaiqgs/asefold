@@ -1,5 +1,7 @@
 ![](https://github.com/Kaiqgs/asefold/blob/main/assets/icon.png?raw=true)
-Aseprite Defold integration
+
+
+Aseprite -> Defold solution.
 
 Check the [usage information](/USAGE.md) for further information.
 
