@@ -1,22 +1,28 @@
 {
   "name": "asefold",
   "displayName": "Asefold",
-  "description": "Export .aseprite into Defold's `.tilesource` file format.",
-  "version": "0.1",
-  "author": { 
-    
+  "description": "Export `.aseprite` into Defold's `.tilesource` file format.",
+  "version": "0.2",
+  "author": {
     "name": "Kaique Santos",
     "email": "kags_@live.com",
-    "url": "https://www.youtube.com/@kagsdev" 
-
+    "url": "https://www.youtube.com/@kagsdev"
   },
-  "contributors": [ ],
+  "contributors": [],
   "publisher": "kagsdev",
   "license": "CC-BY-4.0",
-  "categories": [ "plugin", "export" ],
+  "categories": [
+    "plugin",
+    "export"
+  ],
   "contributes": {
     "scripts": [
-        { "path": "./extension.lua" }
+      {
+        "path": "./extension.lua"
+      },
+      {
+        "path": "./inspect.lua"
+      }
     ]
   }
 }

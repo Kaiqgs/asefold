@@ -2,9 +2,9 @@
 local inspect = require("inspect")
 --- _ignore_end_
 local pardir = ".."
-local _module_animation_line = '\t\t%s = "%s"'
-local _module_shallow_animation_line = '\t%s = "%s"'
-local _module_item_line = '\t\t["%s"] = "%s"'
+local app_name = "asefold"
+local _module_item = '%s%s = "%s"'
+local _module_item_escape = '%s["%s"] = "%s"'
 local _shallow_module_template = [[
 -- generated @ aseprite: asefold-export
 local M = {
@@ -59,9 +59,6 @@ extrude_borders: 2
 inner_padding: 0
 sprite_trim_mode: SPRITE_TRIM_MODE_OFF]]
 
----@type Dialog
-local _main_dialog_
-
 local LuaModuleType = { none = "none", shallow = "shallow", deep = "deep" }
 local DialogWidgets = {
     Animation = "animation",
@@ -69,10 +66,24 @@ local DialogWidgets = {
     GenerateModule = "generate_module",
     OutputFolder = "output_folder",
     FlattenVisible = "flatten_visible",
+    SupressInfo = "supress_info",
+}
+local WidgetsValueField = {
+    [DialogWidgets.Animation] = "option",
+    [DialogWidgets.SpriteSheetType] = "option",
+    [DialogWidgets.GenerateModule] = "option",
+    [DialogWidgets.OutputFolder] = "text",
+    [DialogWidgets.FlattenVisible] = "selected",
+    [DialogWidgets.SupressInfo] = "selected",
 }
 local AnimationType = {
     FromTags = "tags",
     FromLayers = "layers",
+}
+local UserPlayback = {
+    once = "once",
+    loop = "loop",
+    none = "none",
 }
 local type_map = {
     ROWS = SpriteSheetType.ROWS,
@@ -95,30 +106,45 @@ local commands = {
 local empty_name = "__empty__"
 
 local PINGPONG_REVERSE = "pingpong_reverse"
-local function ani_defold(ani, loop)
-    return tostring(ani) .. ":" .. tostring(loop)
+local function direction_loop(anidir, loop)
+    return tostring(anidir) .. ":" .. tostring(loop)
 end
 -- animation + loop
 local MapAniDir = {
-    [ani_defold(AniDir.FORWARD, true)] = "PLAYBACK_LOOP_FORWARD",
-    [ani_defold(AniDir.FORWARD, false)] = "PLAYBACK_ONCE_FORWARD",
-    [ani_defold(AniDir.REVERSE, true)] = "PLAYBACK_LOOP_BACKWARD",
-    [ani_defold(AniDir.REVERSE, false)] = "PLAYBACK_ONCE_BACKWARD",
-    [ani_defold(AniDir.PING_PONG, true)] = "PLAYBACK_LOOP_PINGPONG",
-    [ani_defold(AniDir.PING_PONG, false)] = "PLAYBACK_ONCE_PINGPONG",
-    [ani_defold("forward", true)] = "PLAYBACK_LOOP_FORWARD",
-    [ani_defold("forward", false)] = "PLAYBACK_ONCE_FORWARD",
-    [ani_defold("reverse", true)] = "PLAYBACK_LOOP_BACKWARD",
-    [ani_defold("reverse", false)] = "PLAYBACK_ONCE_BACKWARD",
-    [ani_defold("pingpong", true)] = "PLAYBACK_LOOP_PINGPONG",
-    [ani_defold("pingpong", false)] = "PLAYBACK_ONCE_PINGPONG",
-    [ani_defold(PINGPONG_REVERSE, true)] = "PLAYBACK_LOOP_PINGPONG",
-    [ani_defold(PINGPONG_REVERSE, false)] = "PLAYBACK_ONCE_PINGPONG",
+    [direction_loop(AniDir.FORWARD, true)] = "PLAYBACK_LOOP_FORWARD",
+    [direction_loop(AniDir.FORWARD, false)] = "PLAYBACK_ONCE_FORWARD",
+    [direction_loop(AniDir.REVERSE, true)] = "PLAYBACK_LOOP_BACKWARD",
+    [direction_loop(AniDir.REVERSE, false)] = "PLAYBACK_ONCE_BACKWARD",
+    [direction_loop(AniDir.PING_PONG, true)] = "PLAYBACK_LOOP_PINGPONG",
+    [direction_loop(AniDir.PING_PONG, false)] = "PLAYBACK_ONCE_PINGPONG",
+    [direction_loop("forward", true)] = "PLAYBACK_LOOP_FORWARD",
+    [direction_loop("forward", false)] = "PLAYBACK_ONCE_FORWARD",
+    [direction_loop("reverse", true)] = "PLAYBACK_LOOP_BACKWARD",
+    [direction_loop("reverse", false)] = "PLAYBACK_ONCE_BACKWARD",
+    [direction_loop("pingpong", true)] = "PLAYBACK_LOOP_PINGPONG",
+    [direction_loop("pingpong", false)] = "PLAYBACK_ONCE_PINGPONG",
+    [direction_loop(PINGPONG_REVERSE, true)] = "PLAYBACK_LOOP_PINGPONG",
+    [direction_loop(PINGPONG_REVERSE, false)] = "PLAYBACK_ONCE_PINGPONG",
     none = "PLAYBACK_NONE",
 }
 
 local loc = {
+    format_limitations = "nor layer or tag shall contain underscores",
+    cancel = "cancel",
+    reset = "reset",
+    title_clear_preferences = "erases it all",
+    clear_preferences = "reset your preferences?",
+    clear_preferences_template = "%dx sprite configurations",
+    clear_preferences_path = "or edit json settings in",
+    clear_preferences_path_template = '"%s"',
+    supress_info = "supress messages",
+    supress_label = "skip sucess dialog",
+    clear = "clear",
+    clear_label = "clear preferences",
+    invalid_sprite = "invalid sprite",
+    no_repeat_settings = "no settings to repeat",
     flatten = "flatten visible",
+    title_template = "Asefold: %s",
     titles = {
 
         "export",
@@ -138,7 +164,7 @@ local loc = {
     sprite_tilesource_info = "export sprites to tilesource",
     sprite_tileset_info = "export tiles to tileset",
     path_info = "where to export",
-    run_export = "send",
+    run_export = "export",
     import_animations = "get animations from",
     sorry = "sorry",
     not_implemented = "not implemented",
@@ -155,6 +181,11 @@ local loc = {
         '    Using "Ping-Pong" instead.',
     },
     -- static, nonchanging
+    underscore = "_",
+    temporary_export = "asefold_temporary",
+    tab1 = "\t",
+    tab2 = "\t\t",
+    empty_space = " ",
     id_format = "%s_%s",
     module_filename_form = "%s_tilesource.lua",
     defold_sprite = "defold_sprite",
@@ -164,6 +195,12 @@ local loc = {
     data_filename_form = "{layer}|{frame}",
     data_filename_parse = "([%w%s_. ]*)|([%w%s_. ]+)",
     filename_parse_separator = "|",
+    __index = function(table, key)
+        if table[key] == nil then
+            error(("missing loc string named `%s`"):format(key))
+        end
+        return table[key]
+    end,
 }
 function math.round(x)
     return math.floor(x + 0.5)
@@ -191,12 +228,56 @@ local function ternary(cond, a, b)
     end
     return b
 end
-local function is_export_lua_module()
-    return _main_dialog_.data[DialogWidgets.GenerateModule]
-        and _main_dialog_.data[DialogWidgets.GenerateModule] ~= LuaModuleType.none
+
+local function get_temporary_file(filename)
+    filename = filename or app_name
+    local temp_name = app.fs.joinPath(app.fs.tempPath, filename)
+    return temp_name
 end
-local function is_from_tags()
-    return _main_dialog_.data[DialogWidgets.Animation] == AnimationType.FromTags
+
+---formats
+---@param layer string
+---@param tag string
+local function id_formatting(layer, tag)
+    -- assert(not layer:find(loc.underscore), loc.please_no_underscore_template:format(loc.layer_underscore, ))
+    local empty_tag = tag == empty_name
+    local id = ternary(empty_tag, layer, loc.id_format:format(layer, tag))
+    local err = ternary(
+        (layer:find(loc.underscore) or tag:find(loc.underscore)) and not empty_tag,
+        loc.format_limitations,
+        false
+    )
+    return id, err
+end
+
+---@param dialog Dialog
+---@return boolean
+local function is_export_lua_module(dialog)
+    return dialog.data[DialogWidgets.GenerateModule] and dialog.data[DialogWidgets.GenerateModule] ~= LuaModuleType.none
+end
+
+---@param dialog Dialog
+---@return boolean
+local function is_from_tags(dialog)
+    return dialog.data[DialogWidgets.Animation] == AnimationType.FromTags
+end
+
+---table of strings into dialog new rows
+---@param dialog Dialog
+---@param messages table<string>
+---@return Dialog
+local function dialog_concat(dialog, messages)
+    if messages and type(messages) == "string" then
+        dialog = dialog:label({ text = messages }):newrow()
+    elseif messages and type(messages) == "table" then
+        for i, text in ipairs(messages) do
+            dialog = dialog:label({ text = text })
+            if i < #messages then
+                dialog = dialog:newrow()
+            end
+        end
+    end
+    return dialog
 end
 local function get_obj_from_temp(temp_json_path)
     local temp_file = io.open(temp_json_path, "r")
@@ -205,9 +286,39 @@ local function get_obj_from_temp(temp_json_path)
     end
     local temp_data = temp_file:read("a")
     print(temp_data)
+    json = json or { decode = function(...) end }
     local temp_object = json.decode(temp_data)
     temp_file:close()
     return temp_object
+end
+
+local function get_is_success_supressed(plugin, dialog)
+    plugin = plugin or {}
+    plugin.preferences = plugin.preferences or {}
+    local sprite = app.activeSprite or {}
+    local setting = plugin.preferences[sprite.filename]
+    return (setting and setting[DialogWidgets.SupressInfo]) or (dialog and dialog.data[DialogWidgets.SupressInfo])
+end
+
+local function dialog_verb_cancel(title, message, verb, callback)
+    local dialog = Dialog({ title = title })
+    dialog = dialog_concat(dialog, message)
+    dialog = dialog:button({
+        text = verb,
+        onclick = function()
+            if callback then
+                callback()
+            end
+            dialog:close()
+        end,
+    })
+    dialog = dialog:button({
+        text = loc.cancel,
+        onclick = function()
+            dialog:close()
+        end,
+    })
+    return dialog
 end
 
 local function format_animation(id, start_tile, end_tile, playback, fps, flip_horizontal, flip_vertical)
@@ -224,9 +335,7 @@ end
 
 local function success_dialog(parent, messages)
     local _inner = Dialog({ title = loc.success, parent = parent })
-    for _, msg in ipairs(messages) do
-        _inner = _inner:label({ text = msg }):newrow()
-    end
+    _inner = dialog_concat(_inner, messages)
     _inner:button({
         text = loc.ok,
         onclick = function()
@@ -237,14 +346,7 @@ local function success_dialog(parent, messages)
 end
 local function error_dialog(parent, reason)
     local _inner = Dialog({ title = loc.sorry, parent = parent })
-
-    if reason and type(reason) == "string" then
-        _inner = _inner:label({ text = reason })
-    elseif reason and type(reason) == "table" then
-        for _, text in ipairs(reason) do
-            _inner = _inner:label({ text = text }):newrow()
-        end
-    end
+    _inner = dialog_concat(_inner, reason)
     _inner = _inner:button({
         text = loc.ok,
         onclick = function()
@@ -297,6 +399,7 @@ local function average(list, selector)
 end
 local function get_animations_from_tags(export_data)
     local animations = {}
+    local err = false
     -- TODO: get from input
     local animation_ids = {}
     -- print(inspect(export_data))
@@ -350,7 +453,11 @@ local function get_animations_from_tags(export_data)
                 local tilex = math.round(frame.frame.x / sheet_width * sheet_size.w)
                 local tiley = math.round(frame.frame.y / sheet_height * sheet_size.h)
                 local tile_index = tilex + tiley * sheet_size.w
-                local id = tag == empty_name and layer or loc.id_format:format(layer, tag)
+                local id, format_err = id_formatting(layer, tag)
+                if format_err then
+                    return {}, {}, format_err
+                end
+
                 if layer then
                     frame_data[id] = frame_data[id]
                         or {
@@ -383,14 +490,18 @@ local function get_animations_from_tags(export_data)
     local consumed_ids = {}
     print("frame data")
     print(inspect(frame_data))
+    local pingpong_reverse_warning = true
 
     for _, layer in ipairs(export_data.meta.layers) do
         for _, tag in ipairs(frame_tags) do
             tag = tag or { name = empty_name }
             assert(layer.name)
-            local id = tag.name == empty_name and layer.name or loc.id_format:format(layer.name, tag.name)
+            local id, format_err = id_formatting(layer.name, tag.name)
+            if format_err then
+                return {}, {}, format_err
+            end
             local data = frame_data[id]
-            local tag_data = tag.data or "loop"
+            local tag_data = tag.data or UserPlayback.loop
             -- print("here I am", id)
             -- print(inspect(data))
             if data and not consumed_ids[id] then
@@ -405,17 +516,24 @@ local function get_animations_from_tags(export_data)
                 )
                 --- _ignore_end_
                 local playback_match = {
-                    once = MapAniDir[ani_defold(tag.direction or AniDir.FORWARD, false)],
+                    once = MapAniDir[direction_loop(tag.direction or AniDir.FORWARD, false)],
                     none = MapAniDir.none,
-                    loop = MapAniDir[ani_defold(tag.direction or AniDir.FORWARD, true)],
+                    loop = MapAniDir[direction_loop(tag.direction or AniDir.FORWARD, true)],
                 }
-
-                if tag.direction == PINGPONG_REVERSE then
-                    error_dialog(nil, loc.pingpong_reverse_warning)
+                local resulting_match = playback_match.loop
+                for key, v in pairs(playback_match) do
+                    if tag_data:find(key) then
+                        resulting_match = v
+                        break
+                    end
                 end
 
-                local animation =
-                    format_animation(id, data.from + 1, data.to + 1, playback_match[tag_data], data.fps, 0, 0)
+                if tag.direction == PINGPONG_REVERSE and pingpong_reverse_warning then
+                    error_dialog(nil, loc.pingpong_reverse_warning)
+                    pingpong_reverse_warning = false
+                end
+
+                local animation = format_animation(id, data.from + 1, data.to + 1, resulting_match, data.fps, 0, 0)
                 table.insert(animations, animation)
                 table.insert(animation_ids, id)
                 consumed_ids[id] = true
@@ -423,35 +541,45 @@ local function get_animations_from_tags(export_data)
         end
     end
 
-    return animations, animation_ids
+    return animations, animation_ids, err
 end
-local function save_module(filepath, animation_ids, export_data)
-    if not is_export_lua_module() then
+
+---@param name string
+local function format_module_line(name, tab)
+    tab = tab or loc.tab2
+    local need_escape = name:find(loc.empty_space)
+    if need_escape == nil then
+        return _module_item:format(tab, name, name)
+    end
+    return _module_item_escape:format(tab, name, name)
+end
+local function save_module(dialog, filepath, animation_ids, export_data)
+    if not is_export_lua_module(dialog) then
         return
     end
 
-    local is_shallow = _main_dialog_.data[DialogWidgets.GenerateModule] == LuaModuleType.shallow
+    local is_shallow = dialog.data[DialogWidgets.GenerateModule] == LuaModuleType.shallow
 
     --- get animations
     local animations = {}
     for _, id in ipairs(animation_ids) do
         local line
         if is_shallow then
-            line = table.insert(animations, _module_shallow_animation_line:format(id, id))
+            line = table.insert(animations, format_module_line(id, loc.tab1))
         else
-            line = table.insert(animations, _module_animation_line:format(id, id))
+            line = table.insert(animations, format_module_line(id))
         end
         table.insert(animations, line)
     end
 
     local layers = {}
     for _, layer in ipairs(export_data.meta.layers) do
-        table.insert(layers, _module_item_line:format(layer.name, layer.name))
+        table.insert(layers, format_module_line(layer.name))
     end
 
     local tags = {}
     for _, tag in ipairs(export_data.meta.frameTags) do
-        table.insert(tags, _module_item_line:format(tag.name, tag.name))
+        table.insert(tags, format_module_line(tag.name))
     end
 
     local animations_string = table.concat(animations, ",\n")
@@ -467,17 +595,19 @@ local function save_module(filepath, animation_ids, export_data)
     module_file:write(template:format(animations_string, layers_string, tags_string))
     module_file:close()
 end
-local function save_tilesource(export_data, image_filepath, filepath, module_filename)
+local function save_tilesource(dialog, export_data, image_filepath, filepath, module_filename)
     local file = io.open(filepath, "w+")
     print(filepath)
     if not file then
         error("not able to save tilesource")
     end
 
-    local animations, animation_ids = {}, {}
-
-    if is_from_tags() then
-        animations, animation_ids = get_animations_from_tags(export_data)
+    local animations, animation_ids, err = {}, {}, false
+    if is_from_tags(dialog) then
+        animations, animation_ids, err = get_animations_from_tags(export_data)
+    end
+    if err then
+        return err
     end
     local out_data = _tilesource_template:format(
         image_filepath,
@@ -488,19 +618,15 @@ local function save_tilesource(export_data, image_filepath, filepath, module_fil
 
     file:write(out_data)
     file:close()
-    -- print("wrote")
-    -- print(image_filepath)
-    -- print(filepath)
-
-    save_module(module_filename, animation_ids, export_data)
+    save_module(dialog, module_filename, animation_ids, export_data)
+    return false
 end
--- local function export_tileset() end
-local function _export_tilesource()
+local function _export_tilesource(dialog)
     local ran_transaction = false
-    if _main_dialog_.data[DialogWidgets.FlattenVisible] then
+    if dialog.data[DialogWidgets.FlattenVisible] then
         app.transaction(function()
             local layer_name = app.activeLayer.name
-            for _,layer in ipairs(app.activeSprite.layers) do
+            for _, layer in ipairs(app.activeSprite.layers) do
                 if not layer.isVisible then
                     app.activeSprite:deleteLayer(layer)
                     ran_transaction = true
@@ -516,20 +642,22 @@ local function _export_tilesource()
     local sprite_name = app.fs.fileTitle(app.activeSprite.filename) or loc.defold_sprite
     local sprite_filename = loc.filename:format(sprite_name, loc.extension_png)
     local curr_folder = app.fs.filePath(app.activeSprite.filename) or "/"
-    local reference_folder = _main_dialog_.data[DialogWidgets.OutputFolder]
-    ---@cast reference_folder string
+    ---@type string
+    local reference_folder = dialog.data[DialogWidgets.OutputFolder]
     reference_folder = reference_folder:sub(1, 1) == app.fs.pathSeparator and reference_folder:sub(2)
         or reference_folder
     local relative_folder = app.fs.joinPath(curr_folder, app.fs.joinPath(pardir, reference_folder))
     relative_folder = app.fs.normalizePath(relative_folder)
 
     if not app.fs.isDirectory(relative_folder) then
-        error_dialog(_main_dialog_, "directory does not exist")
-        return
+        error_dialog(ternary(dialog.is_synthetic, nil, dialog), "directory does not exist")
+        return {}
     end
 
     -- print("current folder", curr_folder)
-    local temp_json_path = app.fs.joinPath(curr_folder, "temp_export_defold")
+    -- local temp_json_path = app.fs.joinPath(curr_folder, "temp_export_defold")
+    local temporary_export_path = get_temporary_file(loc.temporary_export)
+
     local export_texture_path = app.fs.joinPath(relative_folder, sprite_filename)
     local internal_image_filename = app.fs.pathSeparator
         .. app.fs.joinPath(reference_folder, loc.filename:format(sprite_name, loc.extension_png))
@@ -539,12 +667,12 @@ local function _export_tilesource()
 
     app.command.ExportSpriteSheet({
         ui = false,
-        dataFilename = temp_json_path,
+        dataFilename = temporary_export_path,
         askOverwrite = false,
         splitLayers = true,
         -- dataFormat = SpriteSheetDataFormat.JSON_ARRAY
 
-        type = type_map[_main_dialog_.data[DialogWidgets.SpriteSheetType]],
+        type = type_map[dialog.data[DialogWidgets.SpriteSheetType]],
         textureFilename = export_texture_path,
         filenameFormat = loc.data_filename_form,
     })
@@ -553,17 +681,22 @@ local function _export_tilesource()
         app.undo()
     end
 
-    local export_data = get_obj_from_temp(temp_json_path)
-    save_tilesource(export_data, internal_image_filename, tilesource_filename, module_filepath)
+    local export_data = get_obj_from_temp(temporary_export_path)
+    local err = save_tilesource(dialog, export_data, internal_image_filename, tilesource_filename, module_filepath)
+    if err then
+        error_dialog(dialog, { err })
+        return {}
+    end
+
     local success_information = {}
-    table.insert(success_information, loc.save_printout:format("Temporary JSON", temp_json_path))
+    table.insert(success_information, loc.save_printout:format("Temporary JSON", temporary_export_path))
     table.insert(success_information, loc.save_printout:format("Texture", export_texture_path))
     table.insert(success_information, loc.save_printout:format("Tile Source", tilesource_filename))
-    if is_export_lua_module() then
+    if is_export_lua_module(dialog) then
         table.insert(success_information, loc.save_printout:format("Lua module", module_filepath))
     end
-    success_dialog(_main_dialog_, success_information);
-    (_main_dialog_ or { close = function(...) end }):close()
+    (dialog or { close = function(...) end }):close()
+    return success_information
 end
 
 ---@param dialog Dialog
@@ -612,6 +745,11 @@ local function dialog_export_tilesource(dialog)
             id = DialogWidgets.GenerateModule,
             text = loc.generate_module,
         })
+        :check({
+            id = DialogWidgets.SupressInfo,
+            text = loc.supress_info,
+            label = loc.supress_label,
+        })
 end
 
 ---@param dialog Dialog
@@ -630,19 +768,133 @@ local function basic_dialog(dialog, overrides)
         })
 end
 
-local function show_dialog()
-    local dlg = Dialog({
-        title = ("Asefold: %s"):format(math.choice(loc.titles) or "asefold"),
+---persistesting
+---@param plugin any
+---@param dialog Dialog
+local function dialog_persistence(plugin, dialog)
+    dialog:button({
+        text = loc.clear,
+        label = loc.clear_label,
+        onclick = function()
+            local counter = 0
+            for _, _ in pairs(plugin.preferences or {}) do
+                counter = counter + 1
+            end
+            dialog_verb_cancel(
+                loc.title_clear_preferences,
+                {
+                    loc.clear_preferences_template:format(counter),
+                    loc.clear_preferences_path,
+                    loc.clear_preferences_path_template:format(get_temporary_file(loc.temporary_export)),
+                    loc.clear_preferences,
+                },
+                loc.reset,
+                function()
+                    plugin.preferences = {}
+                end
+            ):show()
+        end,
+    })
+    local data = plugin.preferences[app.activeSprite.filename]
+    if data then
+        for _, key in pairs(DialogWidgets) do
+            local update = {
+                id = key,
+            }
+            update[WidgetsValueField[key]] = data[key]
+            print(inspect(update))
+            print(key)
+            dialog:modify(update)
+        end
+    end
+    print(app.activeSprite.filename, inspect.inspect(plugin.preferences))
+    return dialog
+end
+
+local function repeat_export(plugin)
+    if not app.activeSprite then
+        error_dialog(nil, loc.invalid_sprite)
+        return
+    end
+    if not plugin.preferences or (plugin.preferences and not plugin.preferences[app.activeSprite.filename]) then
+        error_dialog(nil, loc.no_repeat_settings)
+        return
+    end
+    print(inspect.inspect(plugin.preferences))
+    print(inspect.inspect(plugin.preferences[app.activeSprite.filename]))
+
+    local success_information = _export_tilesource({
+        is_synthetic = true,
+        data = plugin.preferences[app.activeSprite.filename],
+        close = function(...) end,
+    })
+    if not get_is_success_supressed(plugin) then
+        success_dialog(nil, success_information)
+    end
+end
+
+local function _read_plugin_preferences()
+    if not app.fs.isFile(get_temporary_file()) then
+        print("warn: no file")
+        return {}
+    end
+
+    local file, err = io.open(get_temporary_file(), "r")
+    if err or not file then
+        return {}
+    end
+    local data = file:read()
+    file:close()
+    return json.decode(data)
+end
+local function _write_plugin_preferences(plugin_preferences)
+    local file, err = io.open(get_temporary_file(), "w+")
+    if err or not file then
+        return
+    end
+    print("written")
+    print(inspect(plugin_preferences))
+    file:write(json.encode(plugin_preferences))
+    file:close()
+end
+---@param plugin any
+---@param dialog Dialog
+local function _export_persistence(plugin, dialog)
+    local data = dialog.data
+    local new_data = {}
+    for _, key in pairs(DialogWidgets) do
+        new_data[key] = data[key]
+    end
+    plugin.preferences[app.activeSprite.filename] = new_data
+    _write_plugin_preferences(plugin.preferences)
+end
+
+local function show_dialog(plugin)
+    plugin = plugin or {}
+    if not app.activeSprite then
+        error_dialog(nil, loc.invalid_sprite)
+        return
+    end
+    local dialog = Dialog({
+        title = loc.title_template:format(math.choice(loc.titles) or app_name),
         hexpand = true,
         vexpand = true,
     })
 
-    dlg = basic_dialog(dlg, {
-        run_export = _export_tilesource,
+    dialog = basic_dialog(dialog, {
+        run_export = function()
+            local success_information = _export_tilesource(dialog)
+            if #success_information ~= 0 then
+                _export_persistence(plugin, dialog)
+            end
+            if not get_is_success_supressed(plugin, dialog) then
+                success_dialog(dialog, success_information)
+            end
+        end,
     })
-    dlg = dialog_export_tilesource(dlg)
-    _main_dialog_ = dlg
-    dlg:show()
+    dialog = dialog_export_tilesource(dialog)
+    dialog = dialog_persistence(plugin, dialog)
+    dialog:show()
 end
 
 function init(plugin)
@@ -652,23 +904,26 @@ function init(plugin)
         title = loc.export_title,
         group = "file_export",
     })
-
     plugin:newCommand({
         id = commands.AsefoldExportDialog,
         title = loc.export_title,
         group = group,
-        onclick = show_dialog,
+        onclick = function()
+            show_dialog(plugin)
+        end,
     })
     plugin:newCommand({
         id = commands.AsefoldRepeatExport,
         title = loc.repeat_title,
         group = group,
         onclick = function()
-            not_implemented_dialog()
+            repeat_export(plugin)
         end,
     })
+    plugin = plugin or {}
+    plugin.preferences = _read_plugin_preferences()
 end
 
---- _ignore_start_
-show_dialog()
---- _ignore_end_
+function exit(plugin)
+    -- no use
+end
