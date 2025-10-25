@@ -2,7 +2,7 @@
   "name": "asefold",
   "displayName": "Asefold",
   "description": "Export `.aseprite` into Defold's `.tilesource` file format.",
-  "version": "0.2",
+  "version": "0.3",
   "author": {
     "name": "Kaique Santos",
     "email": "kags_@live.com",

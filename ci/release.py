@@ -77,6 +77,8 @@ class AsefoldHandler(FileSystemEventHandler):
         super().__init__(*argses, **kwargs)
         self.args = args
         self.last_modified = datetime.now()
+
+        run(self.args)
     def on_any_event(self, event):
         if datetime.now() - self.last_modified < timedelta(seconds=1):
             return

@@ -1,4 +1,0 @@
-mouse_trigger {
-  input: MOUSE_WHEEL_UP
-  action: "more"
-}

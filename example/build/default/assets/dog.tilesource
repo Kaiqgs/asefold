@@ -1,0 +1,83 @@
+image: "/assets/dog.png"
+tile_width: 22
+tile_height: 22
+tile_margin: 0
+tile_spacing: 0
+collision: ""
+material_tag: "tile"
+collision_groups: "default"
+animations {
+  id: "udyr_chill"
+  start_tile: 1
+  end_tile: 8
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 2
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_confused"
+  start_tile: 9
+  end_tile: 12
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 5
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_punished"
+  start_tile: 13
+  end_tile: 16
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 4
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_rewarded"
+  start_tile: 17
+  end_tile: 21
+  playback: PLAYBACK_LOOP_PINGPONG
+  fps: 20
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_worry"
+  start_tile: 22
+  end_tile: 23
+  playback: PLAYBACK_LOOP_FORWARD
+  fps: 2
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_precipitate"
+  start_tile: 24
+  end_tile: 27
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 2
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_bad"
+  start_tile: 28
+  end_tile: 29
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 3
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "udyr_good"
+  start_tile: 30
+  end_tile: 33
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 4
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+extrude_borders: 2
+inner_padding: 0
+sprite_trim_mode: SPRITE_TRIM_MODE_OFF

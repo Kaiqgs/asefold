@@ -1,7 +1,7 @@
 {
   "workspace.library": [
     "defold_api/",
-    "../aseprite-type-definition/definitions/"
+    "~/.config/aseprite/scripts/aseprite-type-definition/definitions/"
   ],
   "diagnostics.disable": [
     "missing-parameter",

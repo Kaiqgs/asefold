@@ -1,42 +1,20 @@
-# Compiled Lua sources
+# Aseprite Extension Build Artifacts
+*.aseprite-extension
+
+# Defold Build Artifacts
+/example/assets/
+/example/.internal/
+/example/build/
+/example/.editor_settings
+
+# Compiled Lua
+*.luac
 luac.out
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+# Python Cache (for CI scripts)
+__pycache__/
+*.pyc
+*.pyo
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+.luarc.json
 
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-/.internal
-/build

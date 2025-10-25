@@ -1,0 +1,3 @@
+# Dependencies for ci/release.py
+watchdog>=3.0.0
+

@@ -1,8 +1,0 @@
-go.property("image", resource.tile_source(""))
-
-
-local sprite = "#sprite"
-function init(self)
-        go.set(sprite, "image", self.image)
-end
-
