@@ -35,6 +35,8 @@ local TilemapPathData = {}
 --- constants
 local C = {
     app_name = "asefold",
+    app_group = "asefold_file_export",
+    file_export_group = "file_export",
     pardir = "..",
     underscore = "_",
     temporary_export = "asefold_temporary",
@@ -1359,11 +1361,11 @@ local function show_dialog(plugin)
 end
 
 function init(plugin)
-    local group = "asefold_file_export"
+    local group = C.app_group
     plugin:newMenuGroup({
         id = group,
         title = L.export_title,
-        group = "file_export",
+        group = C.file_export_group,
     })
     plugin:newCommand({
         id = commands.AsefoldExportDialog,

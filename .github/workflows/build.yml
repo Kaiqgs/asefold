@@ -33,7 +33,7 @@ jobs:
     
     - name: Build extension
       run: |
-        python3 ci/release.py --release --keep
+        python3 ci/release.py --release
     
     - name: List generated files
       run: |

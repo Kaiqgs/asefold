@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
-
 import time
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
-from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserver
-import watchdog
 import warnings
 import argparse
 import json
 import re
 import subprocess
 
-RM_ALIAS = "_~rm_me_~"
 ASE_EXTENSION_FOLDER = "/home/kags/.config/aseprite/extensions/asefold"
 EXPORT_FILE = "asefold.lua"
 EXTENSION_FILE = "extension.lua"
@@ -29,7 +25,6 @@ REMOVE_PATTERNS = [
         r".*print\(.*", ""
     ],
 ]
-are_we_running = False
 
 def preprocess_extension(is_release):
     with open(EXPORT_FILE, "r") as f:
@@ -41,8 +36,6 @@ def preprocess_extension(is_release):
             break
         result = re.sub(pattern, replacement, result)
     
-    # result = result.replace(RM_ALIAS, "").replace(f"\n{RM_ALIAS}", "").replace(f"\r{RM_ALIAS}", "")
-
     result = "\n".join([line for line in result.split("\n") if line ])
 
     with open(EXTENSION_FILE, "w+") as f:
@@ -84,8 +77,6 @@ class AsefoldHandler(FileSystemEventHandler):
             return
         else:
             self.last_modified = datetime.now()
-        # time.sleep(.5)
-        # print(f"Event: {event} {are_we_running}")
         if not event.is_directory:
             # and event.src_path != self.last_event
             # print("Running")
