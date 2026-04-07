@@ -9,7 +9,7 @@ import json
 import re
 import subprocess
 
-ASE_EXTENSION_FOLDER = "/home/kags/.config/aseprite/extensions/asefold"
+ASE_EXTENSION_FOLDER = "~/.config/aseprite/extensions/asefold"
 EXPORT_FILE = "asefold.lua"
 EXTENSION_FILE = "extension.lua"
 ZIP_FILE = "asefold.v{}.aseprite-extension"
@@ -101,7 +101,7 @@ def run(args:argparse.Namespace):
         command = f"zip {ZIP_FILE.format(version)} {all_files} {rm_extension} && echo 'finished exporting {ZIP_FILE.format(version)}'"
     else:
         # this shit does not work, aseprite does not reload from files
-        command = f"cp {all_files} {ASE_EXTENSION_FOLDER}"
+        command = f"cp {all_files} {ASE_EXTENSION_FOLDER} && rm {EXTENSION_FILE} && echo 'finished exporting {ZIP_FILE.format(version)}'"
     print(f"Running: `{command}`")
     subprocess.Popen(command, shell = True).communicate()
 

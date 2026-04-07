@@ -1,8 +1,7 @@
+local _VERSION
+
 --- _ignore_start_
 local inspect = require("inspect")
-local function print(...)
-    print(...)
-end
 local function pprint(...)
     print(inspect(...))
 end
@@ -270,11 +269,11 @@ local MapAniDir = {
     none = "PLAYBACK_NONE",
 }
 
-function math.round(x)
+local function round(x)
     return math.floor(x + 0.5)
 end
 
-function math.choice(list)
+local function random_choice(list)
     if #list == 0 then
         return nil
     end
@@ -282,19 +281,11 @@ function math.choice(list)
     return list[index]
 end
 
-function table.values(self)
-    local list = {}
-    for _, v in ipairs(self) do
-        table.insert(list, v)
-    end
-    return list
-end
-
-local function ternary(cond, a, b)
+local function ternary(cond, case_true, case_false)
     if cond then
-        return a
+        return case_true
     end
-    return b
+    return case_false
 end
 
 local function get_temporary_file(filename)
@@ -350,11 +341,11 @@ local function dialog_concat(dialog, messages)
 end
 local function get_obj_from_temp(temp_json_path)
     local temp_file = io.open(temp_json_path, "r")
+    print(("Temporary JSON file written to: \"%s\""):format(temp_json_path))
     if not temp_file then
         error("temp_file not generated")
     end
     local temp_data = temp_file:read("a")
-    print(temp_data)
     json = json or { decode = function(...) end }
     local temp_object = json.decode(temp_data)
     temp_file:close()
@@ -506,23 +497,14 @@ local function get_animations_from_tags(export_data)
     local frame_tags = export_data.meta.frameTags
     local frame_data = {}
     for frame_name, frame in pairs(export_data.frames) do
-        print("frame_name") --, frame_name)
-        print(frame_name)
-        print(frame)
-        print(C.data_filename_parse)
         local layer, frame_number =
             string.match(frame_name, C.data_filename_parse)
-        print(frame_number, layer)
         frame_number = tonumber(frame_number)
         for _, tag_data in ipairs(export_data.meta.frameTags) do
             local tag = tag_data.name
             local start_frame = tag_data.from
             local end_frame = tag_data.to
-
-            -- print(inspect(tag_data))
-            -- print("frame frame_number", frame_number, start_frame, end_frame)
             if frame_number >= start_frame and frame_number <= end_frame then
-                -- print(layer, tag, frame_number, "~~~~~~~~~~~~~~~~~", frame_name)
                 layer = layer
                     or string.sub(
                         frame_name,
@@ -532,14 +514,13 @@ local function get_animations_from_tags(export_data)
                 tile_size = tile_size or frame.sourceSize
                 sheet_size = sheet_size
                     or {
-                        w = math.round(sheet_width / tile_size.w),
-                        h = math.round(sheet_height / tile_size.h),
+                        w = round(sheet_width / tile_size.w),
+                        h = round(sheet_height / tile_size.h),
                     }
-                -- + .5 for rounding
                 local tilex =
-                    math.round(frame.frame.x / sheet_width * sheet_size.w)
+                    round(frame.frame.x / sheet_width * sheet_size.w)
                 local tiley =
-                    math.round(frame.frame.y / sheet_height * sheet_size.h)
+                    round(frame.frame.y / sheet_height * sheet_size.h)
                 local tile_index = tilex + tiley * sheet_size.w
                 local id, format_err = id_formatting(layer, tag)
                 if format_err then
@@ -579,8 +560,6 @@ local function get_animations_from_tags(export_data)
     -- TODO: for some reason we're getting double ids...
     -- this is best workaround
     local consumed_ids = {}
-    print("frame data")
-    print(inspect(frame_data))
     local pingpong_reverse_warning = true
 
     for _, layer in ipairs(export_data.meta.layers) do
@@ -593,8 +572,6 @@ local function get_animations_from_tags(export_data)
             end
             local data = frame_data[id]
             local tag_data = tag.data or UserData.loop
-            -- print("here I am", id)
-            -- print(inspect(data))
             if data and not consumed_ids[id] then
                 --- _ignore_start_
                 print(
@@ -764,7 +741,7 @@ local function get_paths(dialog, names)
 
     if not app.fs.isDirectory(relative_folder) then
         error_dialog(
-            ternary(dialog.is_synthetic, nil, dialog),
+            ternary(dialog.data._is_synthetic, nil, dialog),
             L.dir_not_exists
         )
         return false
@@ -829,12 +806,6 @@ local function iterate_grid(canvas_width, canvas_height, layer, tile_size)
     -- app.usetool({
     --
     -- })
-
-    print(app.fgColor.index)
-    print(app.bgColor.index)
-    print("prefcolor fg", app.preferences.color_bar.fg_tile)
-    print("prefcolor bg", app.preferences.color_bar.bg_tile)
-
     local tile_cells = {}
     local iterations = 0
     local tilemap_data
@@ -843,10 +814,9 @@ local function iterate_grid(canvas_width, canvas_height, layer, tile_size)
             local tilemap = cel.image
             tilemap_data = {}
             for it in tilemap:pixels() do
-                -- print(it())
                 table.insert(tilemap_data, app.pixelColor.tileI(it()))
             end
-            pprint({ tiles = tilemap_data, iterations = iterations })
+            -- pprint({ tiles = tilemap_data, iterations = iterations })
         end
     end
     if not tilemap_data then
@@ -856,14 +826,14 @@ local function iterate_grid(canvas_width, canvas_height, layer, tile_size)
     local tile_count_x_axis = math.floor(canvas_width / tile_size.width)
     local tile_count_y_axis = math.floor(canvas_height / tile_size.height)
     --- _ignore_start_
-    pprint({
-        tilemap_width = tile_size.width,
-        tilemap_height = tile_size.height,
-        tiles_per_row = tile_count_x_axis,
-        tiles_per_column = tile_count_y_axis,
-        canvas_width = canvas_width,
-        canvas_height = canvas_height,
-    })
+    -- pprint({
+    --     tilemap_width = tile_size.width,
+    --     tilemap_height = tile_size.height,
+    --     tiles_per_row = tile_count_x_axis,
+    --     tiles_per_column = tile_count_y_axis,
+    --     canvas_width = canvas_width,
+    --     canvas_height = canvas_height,
+    -- })
     --- _ignore_end_
     -- local half_tile_width = tile_size.width / 2
     -- local half_tile_height = tile_size.height / 2
@@ -925,8 +895,8 @@ local function _export_tileset(dialog, tile_layers, tile_names)
     if not paths then
         return {}, true
     end
-    print(inspect(tile_names))
-    print(inspect(paths.tileset))
+    -- print(inspect(tile_names))
+    -- print(inspect(paths.tileset))
     local tilesources = {}
     for i, tile_layer in ipairs(tile_layers) do
         ---@cast tile_layer Layer
@@ -1261,13 +1231,15 @@ local function dialog_persistence(plugin, dialog)
             local update = {
                 id = key,
             }
-            update[WidgetsValueField[key]] = data[key]
-            print(inspect(update))
-            print(key)
-            dialog:modify(update)
+            pcall(function()
+                update[WidgetsValueField[key]] = data[key]
+                -- print(inspect(update))
+                -- print(key)
+                dialog:modify(update)
+            end)
         end
     end
-    print(app.sprite.filename, inspect.inspect(plugin.preferences))
+    -- print(app.sprite.filename, inspect.inspect(plugin.preferences))
     return dialog
 end
 
@@ -1283,12 +1255,13 @@ local function repeat_export(plugin)
         error_dialog(nil, L.no_repeat_settings)
         return
     end
-    print(inspect.inspect(plugin.preferences))
-    print(inspect.inspect(plugin.preferences[app.sprite.filename]))
+    -- print(inspect.inspect(plugin.preferences))
+    -- print(inspect.inspect(plugin.preferences[app.sprite.filename]))
 
+    local data = plugin.preferences[app.sprite.filename]
+    data._is_synthetic = true
     local success_information = _export_tilesource({
-        is_synthetic = true,
-        data = plugin.preferences[app.sprite.filename],
+        data = data,
         close = function(...) end,
     })
     if not get_is_success_suppressed(plugin) and #success_information ~= 0 then
@@ -1315,8 +1288,8 @@ local function _write_plugin_preferences(plugin_preferences)
     if err or not file then
         return
     end
-    print("written")
-    print(inspect(plugin_preferences))
+    -- print("written")
+    -- print(inspect(plugin_preferences))
     file:write(json.encode(plugin_preferences))
     file:close()
 end
@@ -1339,7 +1312,7 @@ local function show_dialog(plugin)
         return
     end
     local dialog = Dialog({
-        title = L.title_template:format(math.choice(L.titles) or C.app_name),
+        title = L.title_template:format(random_choice(L.titles) or C.app_name),
         hexpand = true,
         vexpand = true,
     })
@@ -1350,7 +1323,7 @@ local function show_dialog(plugin)
             if #success_information ~= 0 then
                 _export_persistence(plugin, dialog)
             end
-            if not get_is_success_suppressed(plugin, dialog) then
+            if not get_is_success_suppressed(plugin, dialog) and #success_information ~= 0 then
                 success_dialog(dialog, success_information)
             end
         end,
